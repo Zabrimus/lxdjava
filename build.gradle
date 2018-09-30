@@ -1,0 +1,15 @@
+group 'lxdjava'
+version '0.0.1'
+
+project(':lxdjavalib') {
+}
+
+project(':lxdexamples') {
+}
+
+project(':lxdprovisioning') {
+}
+
+task wrapper(type: Wrapper) {
+    gradleVersion = '4.7'
+}

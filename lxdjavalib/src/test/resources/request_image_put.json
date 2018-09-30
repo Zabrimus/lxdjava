@@ -1,0 +1,10 @@
+{
+    "auto_update": true,
+    "properties": {
+        "architecture": "x86_64",
+        "description": "Ubuntu 14.04 LTS server (20160201)",
+        "os": "ubuntu",
+        "release": "trusty"
+    },
+    "public": true
+}

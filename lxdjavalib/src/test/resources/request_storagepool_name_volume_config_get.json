@@ -1,0 +1,10 @@
+{
+    "type": "custom",
+    "used_by": [],
+    "name": "vol1",
+    "config": {
+        "block.filesystem": "ext4",
+        "block.mount_options": "discard",
+        "size": "10737418240"
+    }
+}

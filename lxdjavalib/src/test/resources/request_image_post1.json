@@ -1,0 +1,24 @@
+{
+  "filename": "filename",
+  "public": true,
+  "auto_update": true,
+  "properties": {
+    "os": "Ubuntu"
+  },
+  "aliases": [
+    {
+      "name": "my-alias",
+      "description": "A description"
+    }
+  ],
+  "source": {
+    "type": "image",
+    "mode": "pull",
+    "server": "https://10.0.2.3:8443",
+    "protocol": "lxd",
+    "secret": "my-secret-string",
+    "certificate": "PEM certificate",
+    "fingerprint": "SHA256",
+    "alias": "ubuntu/devel"
+  }
+}

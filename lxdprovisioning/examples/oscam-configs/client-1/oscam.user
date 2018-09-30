@@ -1,0 +1,8 @@
+[account]
+user                          = user1
+pwd                           = user1
+description                   = dvbapi
+au                            = 1
+group                         = 1
+max_connections               = 2
+

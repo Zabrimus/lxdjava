@@ -1,0 +1,6 @@
+{
+    "server_name": "node2",
+    "enabled": true,
+    "cluster_address": "10.1.1.101:8443",
+    "cluster_certificate": "-----BEGIN CERTIFICATE-----MIFf\n-----END CERTIFICATE-----"
+}

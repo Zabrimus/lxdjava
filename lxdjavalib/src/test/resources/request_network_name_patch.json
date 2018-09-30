@@ -1,0 +1,5 @@
+{
+    "config": {
+        "dns.mode": "dynamic"
+    }
+}

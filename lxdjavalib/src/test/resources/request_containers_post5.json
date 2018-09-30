@@ -1,0 +1,22 @@
+{
+  "name": "my-new-container",
+  "architecture": "x86_64",
+  "profiles": [
+    "default"
+  ],
+  "ephemeral": true,
+  "config": {
+    "limits.cpu": "2"
+  },
+  "devices": {
+    "kvm": {
+      "path": "/dev/kvm",
+      "type": "unix-char"
+    }
+  },
+  "source": {
+    "type": "image",
+    "mode": "pull",
+    "server": "https://10.0.2.3:8443"
+  }
+}

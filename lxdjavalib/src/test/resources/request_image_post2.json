@@ -1,0 +1,18 @@
+{
+  "compression_algorithm": "xz",
+  "filename": "filename",
+  "public": true,
+  "properties": {
+    "os": "Ubuntu"
+  },
+  "aliases": [
+    {
+      "name": "my-alias",
+      "description": "A description"
+    }
+  ],
+  "source": {
+    "type": "container",
+    "name": "abc"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "config": {
+    "limits.memory": "4GB"
+  },
+  "description": "Some description string",
+  "devices": {
+    "kvm": {
+      "path": "/dev/kvm",
+      "type": "unix-char"
+    }
+  }
+}

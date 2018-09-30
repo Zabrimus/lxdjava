@@ -1,0 +1,14 @@
+{
+    "timestamp": "2016-02-17T11:44:28.572721913-05:00",
+    "type": "logging",
+    "metadata": {
+        "context": {
+            "ip": "@",
+            "method": "GET",
+            "url": "/1.0/containers/xen/snapshots"
+        },
+
+        "level": "info",
+        "message": "handling"
+    }
+}

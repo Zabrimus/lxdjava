@@ -1,0 +1,19 @@
+{
+    "cpu": {
+      "sockets": [
+        {
+          "cores": 2,
+          "frequency": 2691,
+          "frequency_turbo": 3400,
+          "name": "GenuineIntel",
+          "vendor": "Intel(R) Core(TM) i5-3340M CPU @ 2.70GHz",
+          "threads": 4
+        }
+      ],
+      "total": 4
+    },
+    "memory": {
+      "used": 4454240256,
+      "total": 8271765504
+    }
+}

@@ -1,0 +1,25 @@
+{
+  "name": "my-new-container",
+  "architecture": "x86_64",
+  "profiles": [
+    "default"
+  ],
+  "ephemeral": true,
+  "config": {
+    "limits.cpu": "2"
+  },
+  "devices": {
+    "kvm": {
+      "path": "/dev/kvm",
+      "type": "unix-char"
+    }
+  },
+  "source": {
+    "type": "image",
+    "properties": {
+      "os": "ubuntu",
+      "release": "14.04",
+      "architecture": "x86_64"
+    }
+  }
+}

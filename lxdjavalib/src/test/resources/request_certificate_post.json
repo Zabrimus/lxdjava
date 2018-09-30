@@ -1,0 +1,6 @@
+{
+    "type": "client",
+    "certificate": "PEM certificate",
+    "name": "foo",
+    "password": "server-trust-password"
+}

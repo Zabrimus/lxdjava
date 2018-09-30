@@ -1,0 +1,5 @@
+{
+    "config": {
+        "core.trust_password": "my-new-password"
+    }
+}

@@ -1,0 +1,25 @@
+{
+  "type": "async",
+  "status": "Operation created",
+  "status_code": 100,
+  "operation": "/1.0/operations/6c3b2a67-a35d-49b8-8cf5-d2d65ce67066",
+  "error_code": 0,
+  "error": "",
+  "metadata": {
+    "id": "6c3b2a67-a35d-49b8-8cf5-d2d65ce67066",
+    "class": "task",
+    "description": "Executing command",
+    "created_at": "2018-06-15T17:49:11.104944712Z",
+    "updated_at": "2018-06-15T17:49:11.104944712Z",
+    "status": "Running",
+    "status_code": 103,
+    "resources": {
+      "containers": [
+        "/1.0/containers/debian3"
+      ]
+    },
+    "metadata": {},
+    "may_cancel": false,
+    "err": ""
+  }
+}

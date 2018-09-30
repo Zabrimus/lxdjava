@@ -1,0 +1,154 @@
+variables:
+    certfile: ${certfile}
+    keyfile:  ${keyfile}
+    lxdhost:  ${lxdhost:localhost}
+    lxdport:  ${lxdport:8443}
+    cname:    ${container_name}
+    rootpw:   ${rootpw}
+    pgsubnet: ${pgsubnet}
+    pgpasswd: ${guacamole_db_passwd}
+        
+lxd:
+    certFile: ${certfile}
+    keyFile: ${keyfile}
+    host: ${lxdhost}
+    port: ${lxdport}
+
+container:
+    source:
+        protocol: "simplestreams"
+        server : "https://images.linuxcontainers.org"
+        architecture: "x86_64"
+        alias: "debian/stretch"
+        type: "image"
+        
+    configuration:
+        name: ${cname}
+        ephemeral: "false"
+        profile: 
+            - "default"
+        storage: "default"
+
+provisioning:
+    # wait for network 
+    - script: 
+        content: |
+            #!/bin/sh
+            while  ! systemctl is-active --quiet networking; do 
+                echo "wait for network being up..."
+                sleep 1
+            done
+            sleep 1
+    
+    # install all packages
+    - run: 
+        commands: |
+            apt-get update
+            apt-get dist-upgrade 
+            apt-get -y install postgresql openssh-server tomcat8 curl libcairo2-dev libossp-uuid-dev \
+                               libavcodec-dev libavutil-dev libswscale-dev libfreerdp-dev libpango1.0-dev \ 
+                               libssh2-1-dev libtelnet-dev libvncserver-dev libpulse-dev libssl-dev \ 
+                               libvorbis-dev libwebp-dev libjpeg62-turbo-dev libpng-dev libpng16-16 \
+                               nano less syslog-ng iputils-ping
+    
+    # change default locale and timezone
+    - script:
+        label: "change locale and timezone"
+        content: |
+            #!/bin/sh
+            sed -i 's/^# *\(de_DE.UTF-8\)/\1/' /etc/locale.gen
+            locale-gen
+            update-locale LANG=de_DE.UTF-8
+            timedatectl set-timezone Europe/Berlin
+            echo "export LANG=de_DE@UTF-8" >> /etc/bash.bashrc
+            echo "export LANG=de_DE@UTF-8" > /etc/profile.d/locale_de.sh
+
+    # build guacamole server    
+    - script: 
+        content: |
+            #!/bin/sh
+            cd /usr/local/src
+            curl -L "http://apache.org/dyn/closer.cgi?action=download&filename=guacamole/0.9.14/source/guacamole-server-0.9.14.tar.gz" -o - | tar -xz
+            cd guacamole-server-0.9.14
+            ./configure --with-init-dir=/etc/init.d && make -j 4 && make install && ldconfig
+            mkdir -p /etc/guacamole/extensions; mkdir -p /etc/guacamole/lib
+     
+    # install jdbc driver
+    - script: 
+        content: |
+            #!/bin/sh
+            curl -L "https://jdbc.postgresql.org/download/postgresql-42.2.4.jar" -o /etc/guacamole/lib/postgresql-42.2.4.jar
+            cd /tmp
+            curl -L "http://apache.org/dyn/closer.cgi?action=download&filename=guacamole/0.9.14/binary/guacamole-auth-jdbc-0.9.14.tar.gz" -o - | tar -xz
+            cd /tmp/guacamole-auth-jdbc-0.9.14/postgresql
+            cp guacamole-auth-jdbc-postgresql-0.9.14.jar /etc/guacamole/extensions
+
+    # create guacamole database
+    - script: 
+        content: |
+            #!/bin/sh
+            cd /tmp/guacamole-auth-jdbc-0.9.14/postgresql
+            echo "create database guacamole_db;" | su postgres -c psql
+            cat schema/*.sql | su postgres -c 'psql -d guacamole_db -f -'
+            echo "CREATE USER guacamole_user WITH PASSWORD '${pgpasswd}';" | su postgres -c psql
+            echo "GRANT SELECT,INSERT,UPDATE,DELETE ON ALL TABLES IN SCHEMA public TO guacamole_user" | su postgres -c 'psql -d guacamole_db'
+            echo "GRANT SELECT,USAGE ON ALL SEQUENCES IN SCHEMA public TO guacamole_user" | su postgres -c 'psql -d guacamole_db'
+    
+    # create guacamole configuration
+    - script: 
+        content: |
+            #!/bin/sh
+            echo "# Auth provider class" >>  /etc/guacamole/guacamole.properties
+            echo "auth-provider: org.glyptodon.guacamole.auth.postgresql.PostgreSQLAuthenticationProvider" >> /etc/guacamole/guacamole.properties
+            echo "postgresql-hostname: localhost" >> /etc/guacamole/guacamole.properties
+            echo "postgresql-port: 5432" >> /etc/guacamole/guacamole.properties
+            echo "postgresql-database: guacamole_db" >> /etc/guacamole/guacamole.properties
+            echo "postgresql-username: guacamole_user" >> /etc/guacamole/guacamole.properties
+            echo "postgresql-password: ${pgpasswd}" >> /etc/guacamole/guacamole.properties
+
+    # install guacamole application
+    - run: 
+        commands: |
+            curl -L "http://apache.org/dyn/closer.cgi?action=download&filename=guacamole/0.9.14/binary/guacamole-0.9.14.war" -o /var/lib/tomcat8/webapps/guacamole.war
+        
+    # set root password, enable root ssh, change postgresql subnet
+    - script: 
+        content: |
+            #!/bin/sh
+            if [ ! -z "${pgsubnet}" ]; then
+                echo "host all all ${pgsubnet} md5" >> /etc/postgresql/9.6/main/pg_hba.conf
+                sed -i -e "s/#listen_addresses.*/listen_addresses = '*'/" /etc/postgresql/9.6/main/postgresql.conf
+            fi;
+            
+            if [ ! -z "${rootpw}" ]; then
+                echo "root:${rootpw}" | chpasswd
+                sed -i -e "s/#PermitRootLogin.*/PermitRootLogin yes/" /etc/ssh/sshd_config
+            fi;
+        
+    # final tasks: enable all application and restart all
+    - run: 
+        commands: |
+            systemctl enable guacd
+            systemctl enable tomcat8
+            systemctl enable postgresql
+            systemctl stop sshd             
+            systemctl stop tomcat8
+            systemctl stop guacd
+            systemctl stop postgresql
+            systemctl start postgresql
+            systemctl start guacd
+            systemctl start tomcat8
+            systemctl start sshd
+
+    # fix LXD stop issues
+    - run: 
+        commands: |
+            systemctl mask systemd-networkd            
+
+    # cleanup
+    - run: 
+        commands: |
+            apt-get clean
+            apt-get -y autoremove
+            rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+            rm -rf /tmp/guacamole-auth-jdbc-0.9.14

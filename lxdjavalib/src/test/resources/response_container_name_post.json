@@ -1,0 +1,5 @@
+{
+  "control": "secret1",
+  "criu": "secret2",
+  "fs": "secret3"
+}

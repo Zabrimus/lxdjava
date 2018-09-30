@@ -1,0 +1,211 @@
+variables:
+    certfile:  ${certfile}
+    keyfile:   ${keyfile}
+    lxdhost:   ${lxdhost:localhost}
+    lxdport:   ${lxdport:8443}
+    cname:     ${container_name}
+    rootpw:    ${rootpw}
+    guacamole: ${guacamole}
+        
+lxd:
+    certFile: ${certfile}
+    keyFile: ${keyfile}
+    host: ${lxdhost}
+    port: ${lxdport}
+
+container:
+    source:
+        protocol: "simplestreams"
+        server : "https://images.linuxcontainers.org"
+        architecture: "x86_64"
+        alias: "debian/stretch"
+        type: "image"
+        
+    configuration:
+        name: ${cname}
+        ephemeral: "false"
+        profile: 
+            - "default"
+        storage: "default"
+
+provisioning:
+    # wait for network 
+    - script: 
+        label: "wait for network"
+        content: |
+            #!/bin/sh
+            while  ! systemctl is-active --quiet networking; do 
+                echo "wait for network being up..."
+                sleep 1
+            done
+            sleep 1
+
+    # install all packages
+    - run:
+        label: "install all packages" 
+        commands: |
+            apt-get install -qy build-essential \
+                                git wget unzip uuid uuid-dev libarchive13 libarchive-dev \
+                                zlib1g zlib1g-dev libcurl4-openssl-dev libcurl3 \
+                                libxslt1.1 libxslt1-dev libxml2 libxml2-dev \
+                                default-libmysqlclient-dev libmariadbclient-dev-compat \
+                                mariadb-server mariadb-client-10.1 libimlib2 libimlib2-dev \
+                                libjansson4 libjansson-dev libssl-dev libsystemd-dev \
+                                libmicrohttpd12 libmicrohttpd-dev libimlib2 libimlib2-dev \
+                                libjpeg62-turbo libjpeg62-turbo-dev libtiff5 libtiff5-dev \
+                                python libpython2.7 libpython-dev python-dev \
+                                openssh-server nano less syslog-ng iputils-ping
+                
+    # change default locale and timezone
+    - script:
+        label: "change locale and timezone"
+        content: |
+            #!/bin/sh
+            sed -i 's/^# *\(de_DE.UTF-8\)/\1/' /etc/locale.gen
+            locale-gen
+            update-locale LANG=de_DE.UTF-8
+            timedatectl set-timezone Europe/Berlin
+            echo "export LANG=de_DE@UTF-8" >> /etc/bash.bashrc
+            echo "export LANG=de_DE@UTF-8" > /etc/profile.d/locale_de.sh
+
+    # install epgd daemon                            
+    - script: 
+        label: "install epgd daemon"
+        content: |
+            #!/bin/sh
+            git clone https://projects.vdr-developer.org/git/vdr-epg-daemon.git /usr/local/src/epgd
+            cd /usr/local/src/epgd
+            git clone https://github.com/3PO/epgd-plugin-tvm.git ./PLUGINS/tvm
+            git clone https://github.com/chriszero/epgd-plugin-tvsp.git ./PLUGINS/tvsp
+    
+            # patch Make.config
+            sed -i -e "s/^INIT_SYSTEM.*$/INIT_SYSTEM = systemd/" Make.config
+            sed -i -e "s/^INIT_AFTER.*$/INIT_AFTER = mariadb.service/" Make.config
+    
+            make all install
+
+    # create the database init files
+    - createFile:
+        label: "create file initepgd 1"
+        remote: "/tmp/initepgd"
+        uid: "0"
+        gid: "0"
+        permission: "0700"
+        content: |
+            CREATE DATABASE epg2vdr charset utf8;
+            CREATE USER 'epg2vdr'@'%' IDENTIFIED BY 'epg';
+            GRANT ALL PRIVILEGES ON epg2vdr.* TO 'epg2vdr'@'%';
+            GRANT ALL PRIVILEGES ON epg2vdr.* TO 'epg2vdr'@'localhost' IDENTIFIED BY 'epg';
+            FLUSH PRIVILEGES;
+
+    - script: 
+        label: "execute initepgd 1"
+        content: |
+            #!/bin/sh
+            mysql -u root < /tmp/initepgd
+            rm -f /tmp/initepgd
+
+    - createFile:
+        label: "create file initepgd 2"
+        remote: "/tmp/initepgd"
+        uid: "0"
+        gid: "0"
+        permission: "0700"
+        content: |
+            DROP FUNCTION IF EXISTS epglv;
+            DROP FUNCTION IF EXISTS epglvr;
+            CREATE FUNCTION epglv RETURNS INT SONAME 'mysqlepglv.so';
+            CREATE FUNCTION epglvr RETURNS INT SONAME 'mysqlepglv.so';
+            
+    - script: 
+        label: "initepgd 2"
+        content: |
+            #!/bin/sh
+            mysql -u root -D epg2vdr < /tmp/initepgd
+            rm -f /tmp/initepgd
+        
+    # patch mariadb config
+    - run: 
+        label: "patch mariadb.conf"
+        commands: |    
+            sed -i -e "s/^bind-address.*$/bind-address = 0.0.0.0/" /etc/mysql/mariadb.conf.d/50-server.cnf
+
+    # set root password, enable root ssh 
+    - script: 
+        label: "enable root login"
+        content: |
+            if [ ! -z "${rootpw}" ]; then
+                echo "root:${rootpw}" | chpasswd
+                sed -i -e "s/#PermitRootLogin.*/PermitRootLogin yes/" /etc/ssh/sshd_config
+            fi;
+
+    # configure guacamole
+    - createFile:        
+        label: "create file in ${guacamole}"
+        container: ${guacamole}        
+        remote: "/tmp/addconnection"
+        uid: "0"
+        gid: "0"
+        permission: "0644"
+        content: |
+            \set AUTOCOMMIT off
+            DO $$BEGIN
+                IF NOT EXISTS (select 1 from guacamole_connection where connection_name = 'Container ${cname}') THEN        
+                    PERFORM nextval('guacamole_connection_connection_id_seq');        
+                    INSERT INTO guacamole_connection VALUES (currval('guacamole_connection_connection_id_seq'), '${cname}', NULL, 'ssh', NULL, NULL, NULL, false, NULL, NULL, NULL);
+                    INSERT INTO guacamole_connection_parameter VALUES (currval('guacamole_connection_connection_id_seq'), 'hostname', '${cname}');
+                    INSERT INTO guacamole_connection_parameter VALUES (currval('guacamole_connection_connection_id_seq'), 'password', '${rootpw}');
+                    INSERT INTO guacamole_connection_parameter VALUES (currval('guacamole_connection_connection_id_seq'), 'username', 'root');
+    
+                    INSERT INTO guacamole_connection_permission VALUES ((SELECT user_id FROM guacamole_user WHERE username = 'guacadmin'), currval('guacamole_connection_connection_id_seq'), 'READ');
+                    INSERT INTO guacamole_connection_permission VALUES ((SELECT user_id FROM guacamole_user WHERE username = 'guacadmin'), currval('guacamole_connection_connection_id_seq'), 'UPDATE');
+                    INSERT INTO guacamole_connection_permission VALUES ((SELECT user_id FROM guacamole_user WHERE username = 'guacadmin'), currval('guacamole_connection_connection_id_seq'), 'DELETE');
+                    INSERT INTO guacamole_connection_permission VALUES ((SELECT user_id FROM guacamole_user WHERE username = 'guacadmin'), currval('guacamole_connection_connection_id_seq'), 'ADMINISTER');
+                END IF;
+            END$$;
+            commit;
+    
+    - script:
+        label: "in ${guacamole}"
+        container: ${guacamole}
+        content: |
+            #!/bin/sh
+            if [ -z "${rootpw}" -o -z "${guacamole}" ]; then 
+                exit 0; 
+            fi
+            
+            su postgres -c "psql -d guacamole_db -f /tmp/addconnection"
+            rm -f /tmp/addconnection
+
+    # fix LXD stop issues
+    - run:
+        label: "fix lxd stop issue" 
+        commands: |
+            systemctl mask systemd-networkd            
+
+    # restart all services
+    - run: 
+        label: "restart all services"
+        commands: |
+            systemctl stop sshd
+            systemctl stop mariadb
+            systemctl start sshd
+            systemctl start mariadb
+
+    # cleanup
+    - run: 
+        label: "cleanup"
+        commands: |
+            apt-get clean
+            apt-get -qy autoremove
+            rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+        
+    # final task: let epgd create the database (this can take some time)
+    - script: 
+        label: "start epgd daemon"
+        content: |
+            #!/bin/sh
+            systemctl enable epgd
+            systemctl stop epgd 
+            systemctl start epgd
+

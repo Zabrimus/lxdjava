@@ -1,0 +1,5 @@
+{
+  "description": "The alias description",
+  "target": "SHA-256",
+  "name": "alias-name"
+}

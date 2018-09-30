@@ -1,0 +1,11 @@
+{
+  "config": {
+    "limits.cpu": "4"
+  },
+  "devices": {
+    "rootfs": {
+      "size": "5GB"
+    }
+  },
+  "ephemeral": true
+}

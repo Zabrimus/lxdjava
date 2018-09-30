@@ -1,0 +1,22 @@
+{
+  "name": "my-new-container",
+  "architecture": "x86_64",
+  "profiles": [
+    "default"
+  ],
+  "ephemeral": true,
+  "config": {
+    "limits.cpu": "2"
+  },
+  "devices": {
+    "kvm": {
+      "path": "/dev/kvm",
+      "type": "unix-char"
+    }
+  },
+  "instance_type": "c2.micro",
+  "source": {
+    "type": "image",
+    "alias": "ubuntu/devel"
+  }
+}

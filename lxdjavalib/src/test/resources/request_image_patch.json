@@ -1,0 +1,7 @@
+{
+    "properties": {
+        "os": "ubuntu",
+        "release": "trusty"
+    },
+    "public": true
+}

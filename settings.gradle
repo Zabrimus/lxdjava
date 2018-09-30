@@ -1,0 +1,5 @@
+rootProject.name = 'lxdjava'
+
+include 'lxdjavalib'
+include 'lxdexamples'
+include 'lxdprovisioning'

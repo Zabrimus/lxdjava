@@ -1,0 +1,6 @@
+{
+    "type": "client",
+    "certificate": "PEM certificate",
+    "name": "foo",
+    "fingerprint": "SHA256 Hash of the raw certificate"
+}

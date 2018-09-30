@@ -1,0 +1,13 @@
+{
+  "config": {
+
+  },
+  "pool": "pool1",
+  "name": "vol1",
+  "type": "custom",
+  "source": {
+    "pool": "pool2",
+    "name": "vol2",
+    "type": "copy"
+  }
+}

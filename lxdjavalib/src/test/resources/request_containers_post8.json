@@ -1,0 +1,21 @@
+{
+  "name": "my-new-container",
+  "profiles": [
+    "default"
+  ],
+  "ephemeral": true,
+  "config": {
+    "limits.cpu": "2"
+  },
+  "devices": {
+    "kvm": {
+      "path": "/dev/kvm",
+      "type": "unix-char"
+    }
+  },
+  "source": {
+    "type": "copy",
+    "container_only": true,
+    "source": "my-old-container"
+  }
+}

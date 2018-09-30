@@ -1,0 +1,18 @@
+{
+  "architecture": "x86_64",
+  "config": {
+    "limits.cpu": "4",
+    "volatile.base_image": "97d97a3d1d053840ca19c86cdd0596cf1be060c5157d31407f2a4f9f350c78cc",
+    "volatile.eth0.hwaddr": "00:16:3e:1c:94:38"
+  },
+  "devices": {
+    "rootfs": {
+      "path": "/",
+      "type": "disk"
+    }
+  },
+  "ephemeral": true,
+  "profiles": [
+    "default"
+  ]
+}

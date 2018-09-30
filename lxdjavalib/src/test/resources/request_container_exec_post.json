@@ -1,0 +1,13 @@
+{
+  "command": [
+    "/bin/bash"
+  ],
+  "environment": {
+
+  },
+  "wait-for-websocket": false,
+  "record-output": false,
+  "interactive": true,
+  "width": 80,
+  "height": 25
+}

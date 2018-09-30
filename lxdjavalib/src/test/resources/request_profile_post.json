@@ -1,0 +1,13 @@
+{
+  "name": "my-profilename",
+  "description": "Some description string",
+  "config": {
+    "limits.memory": "2GB"
+  },
+  "devices": {
+    "kvm": {
+      "type": "unix-char",
+      "path": "/dev/kvm"
+    }
+  }
+}

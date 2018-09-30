@@ -1,0 +1,275 @@
+variables:
+    certfile:  ${certfile}
+    keyfile:   ${keyfile}
+    lxdhost:   ${lxdhost:localhost}
+    lxdport:   ${lxdport:8443}
+    cname:     ${container_name}
+    rootpw:    ${rootpw}
+    guacamole: ${guacamole}
+        
+lxd:
+    certFile: ${certfile}
+    keyFile: ${keyfile}
+    host: ${lxdhost}
+    port: ${lxdport}
+
+container:
+    source:
+        protocol: "simplestreams"
+        server : "https://images.linuxcontainers.org"
+        architecture: "x86_64"
+        alias: "debian/stretch"
+        type: "image"
+        
+    configuration:
+        name: ${cname}
+        ephemeral: "false"
+        profile: 
+            - "default"
+        storage: "default"
+            
+provisioning:
+    # wait for network 
+    - script: 
+        label: "wait for network"
+        content: |
+            #!/bin/sh
+            while  ! systemctl is-active --quiet networking; do 
+                echo "wait for network being up..."
+                sleep 1
+            done
+            sleep 1
+
+    # install all packages
+    - run:
+        label: "install all packages" 
+        commands: |
+            apt-get install -qy bind9 isc-dhcp-server openssh-server \
+                                nano less syslog-ng iputils-ping                                
+                
+    # change default locale and timezone
+    - script:
+        label: "change locale and timezone"
+        content: |
+            #!/bin/sh
+            sed -i 's/^# *\(de_DE.UTF-8\)/\1/' /etc/locale.gen
+            locale-gen
+            update-locale LANG=de_DE.UTF-8
+            timedatectl set-timezone Europe/Berlin
+            echo "export LANG=de_DE@UTF-8" >> /etc/bash.bashrc
+            echo "export LANG=de_DE@UTF-8" > /etc/profile.d/locale_de.sh
+            
+    # stop services
+    - run: 
+        label: "stop services"
+        commands: |
+            systemctl stop isc-dhcp-server
+            systemctl stop bind9
+
+    - script:
+        label: "prepare bind and dhcp"
+        content: |
+            #!/bin/sh
+            if [ ! -f /var/lib/dhcp/dhcpd.leases ]; then
+                touch /var/lib/dhcp/dhcpd.leases    
+            fi
+
+            sed -i -e 's/INTERFACESv4=""/INTERFACESv4="eth0"/g' /etc/default/isc-dhcp-server
+            sed -i -e 's/INTERFACESv6=""/INTERFACESv6="eth0"/g' /etc/default/isc-dhcp-server
+
+            # create key
+            cd /etc/bind
+            dnssec-keygen -a hmac-md5 -b 128 -r /dev/urandom -n USER lxdbindkey
+            key=`awk '{ print $7 }'  Klxdbindkey*.key`
+
+            # create sample zone for bind
+            mkdir -p /etc/bind/lan
+
+            cat <<- EOF > /etc/bind/named.conf.local
+            key "ddns-key" {
+                algorithm hmac-md5;
+                secret "$key";
+            };
+
+            zone "lan" {
+                type master;
+                file "/etc/bind/lan/db.lan";
+                allow-update { key "ddns-key" ; } ;
+                allow-query { 127.0.0.1; 192.168.178.0/24; };
+            };
+
+            zone "178.168.192.in-addr.arpa." {
+                type master;
+                file "/etc/bind/lan/db.lan.inv";
+                allow-update { key "ddns-key" ; } ;
+                allow-query { 127.0.0.1; 192.168.178.0/24 ; } ;
+            };
+            EOF
+
+            cat <<- EOF > /etc/bind/lan/db.lan
+            \$ORIGIN .
+            \$TTL 3600       ; 1 hour
+            lan                     IN SOA  dns.lan. root.lan. (
+                                            1          ; serial
+                                            3600       ; refresh (1 hour)
+                                            600        ; retry (10 minutes)
+                                            86400      ; expire (1 day)
+                                            600        ; minimum (10 minutes)
+                                            )
+                                    NS      dns.lan.
+            \$ORIGIN lan.
+            gate               A       192.168.178.1
+            server1            A       192.168.178.2
+            EOF
+
+            cat <<- EOF > /etc/bind/lan/db.lan.inv
+            \$ORIGIN .
+            \$TTL 600        ; 10 minutes
+            178.168.192.in-addr.arpa IN SOA dns.lan. root.lan. (
+                                            1          ; serial
+                                            3600       ; refresh (1 hour)
+                                            600        ; retry (10 minutes)
+                                            86400      ; expire (1 day)
+                                            600        ; minimum (10 minutes)
+                                            )
+                                    NS      dns.lan.
+            \$ORIGIN 178.168.192.in-addr.arpa.
+            1                       PTR     gate.lan.
+            2                       PTR     server1.lan.            
+            EOF
+
+            # create dhcp sample conf
+            cat <<- EOF > /etc/dhcp/dhcpd.conf
+            # common settings
+            authoritative;
+            ddns-updates on;
+            ddns-update-style interim;
+            
+            key "ddns-key" {
+                algorithm hmac-md5;
+                secret "$key";
+            };
+            
+            zone lan {
+                primary 127.0.0.1;
+                key "ddns-key";
+            }
+            
+            zone 178.168.192.in-addr.arpa {
+                primary 127.0.0.1;
+                key "ddns-key";
+            }
+            
+            # one sample subnet (see also bind configuration)
+            subnet 192.168.178.0 netmask 255.255.255.0 {
+                option routers             192.168.178.1;
+                option domain-name-servers 192.168.178.1;
+                option subnet-mask         255.255.255.0;
+                option domain-search       "lan";
+                option domain-name         "lan";
+                range 192.168.178.50 192.168.178.120;
+                ddns-domainname            "lan";
+                default-lease-time         21600;
+                max-lease-time             43200;
+                interface eth0;
+            }
+            
+            # static IP
+            host gate {
+                hardware ethernet D5:D7:6D:E2:90:78;
+                fixed-address 192.168.178.1;
+                ddns-hostname "gate";
+            }
+            
+            host server1 {
+                hardware ethernet D5:D7:6D:E2:90:79;
+                fixed-address 192.168.178.2;
+                ddns-hostname "server1";
+            }
+            EOF
+
+    # copy all existing files (possibly from backup)
+    - uploadDir:
+        local: "binddhcp-config/bind"
+        remote: "/etc/bind"
+        uid: "0"
+        gid: "0"
+        permission: "644"
+
+    # copy all existing files (possibly from backup)
+    - uploadDir:
+        local: "binddhcp-config/hdcp"
+        remote: "/etc/dhcp"
+        uid: "0"
+        gid: "0"
+        permission: "644"
+
+    # set root password, enable root ssh 
+    - script: 
+        label: "enable root login"
+        content: |
+            if [ ! -z "${rootpw}" ]; then
+                echo "root:${rootpw}" | chpasswd
+                sed -i -e "s/#PermitRootLogin.*/PermitRootLogin yes/" /etc/ssh/sshd_config
+            fi;
+
+    # configure guacamole
+    - createFile:        
+        label: "create file in ${guacamole}"
+        container: ${guacamole}        
+        remote: "/tmp/addconnection"
+        uid: "0"
+        gid: "0"
+        permission: "0644"
+        content: |
+            \set AUTOCOMMIT off
+            DO $$BEGIN
+                IF NOT EXISTS (select 1 from guacamole_connection where connection_name = 'Container ${cname}') THEN        
+                    PERFORM nextval('guacamole_connection_connection_id_seq');        
+                    INSERT INTO guacamole_connection VALUES (currval('guacamole_connection_connection_id_seq'), '${cname}', NULL, 'ssh', NULL, NULL, NULL, false, NULL, NULL, NULL);
+                    INSERT INTO guacamole_connection_parameter VALUES (currval('guacamole_connection_connection_id_seq'), 'hostname', '${cname}');
+                    INSERT INTO guacamole_connection_parameter VALUES (currval('guacamole_connection_connection_id_seq'), 'password', '${rootpw}');
+                    INSERT INTO guacamole_connection_parameter VALUES (currval('guacamole_connection_connection_id_seq'), 'username', 'root');
+    
+                    INSERT INTO guacamole_connection_permission VALUES ((SELECT user_id FROM guacamole_user WHERE username = 'guacadmin'), currval('guacamole_connection_connection_id_seq'), 'READ');
+                    INSERT INTO guacamole_connection_permission VALUES ((SELECT user_id FROM guacamole_user WHERE username = 'guacadmin'), currval('guacamole_connection_connection_id_seq'), 'UPDATE');
+                    INSERT INTO guacamole_connection_permission VALUES ((SELECT user_id FROM guacamole_user WHERE username = 'guacadmin'), currval('guacamole_connection_connection_id_seq'), 'DELETE');
+                    INSERT INTO guacamole_connection_permission VALUES ((SELECT user_id FROM guacamole_user WHERE username = 'guacadmin'), currval('guacamole_connection_connection_id_seq'), 'ADMINISTER');
+                END IF;
+            END$$;
+            commit;
+    
+    - script:
+        label: "in ${guacamole}"
+        container: ${guacamole}
+        content: |
+            #!/bin/sh
+            if [ -z "${rootpw}" -o -z "${guacamole}" ]; then 
+                exit 0; 
+            fi
+            
+            su postgres -c "psql -d guacamole_db -f /tmp/addconnection"
+            rm -f /tmp/addconnection
+
+    # fix LXD stop issues
+    - run:
+        label: "fix lxd stop issue" 
+        commands: |
+            systemctl mask systemd-networkd            
+
+    # cleanup
+    - run: 
+        label: "cleanup"
+        commands: |
+            apt-get clean
+            apt-get -qy autoremove
+            rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+    # restart all services
+    # will not work without further dhcp/bind configuration
+    - run: 
+        label: "restart all services"
+        ignore-error: "true"
+        commands: |
+            systemctl start isc-dhcp-server
+            systemctl start bind9

@@ -1,0 +1,41 @@
+{
+  "architecture": "x86_64",
+  "config": {
+    "limits.cpu": "3",
+    "volatile.base_image": "97d97a3d1d053840ca19c86cdd0596cf1be060c5157d31407f2a4f9f350c78cc",
+    "volatile.eth0.hwaddr": "00:16:3e:1c:94:38"
+  },
+  "created_at": "2016-02-16T01:05:05Z",
+  "devices": {
+    "rootfs": {
+      "path": "/",
+      "type": "disk"
+    }
+  },
+  "ephemeral": false,
+  "expanded_config": {
+    "limits.cpu": "3",
+    "volatile.base_image": "97d97a3d1d053840ca19c86cdd0596cf1be060c5157d31407f2a4f9f350c78cc",
+    "volatile.eth0.hwaddr": "00:16:3e:1c:94:38"
+  },
+  "expanded_devices": {
+    "eth0": {
+      "name": "eth0",
+      "nictype": "bridged",
+      "parent": "lxdbr0",
+      "type": "nic"
+    },
+    "root": {
+      "path": "/",
+      "type": "disk"
+    }
+  },
+  "last_used_at": "2016-02-16T01:05:05Z",
+  "name": "my-container",
+  "profiles": [
+    "default"
+  ],
+  "stateful": false,
+  "status": "Running",
+  "status_code": 103
+}

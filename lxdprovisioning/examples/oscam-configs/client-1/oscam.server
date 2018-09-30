@@ -1,0 +1,10 @@
+[reader]
+label                         = server
+description                   = server
+enable                        = 0
+protocol                      = cs357x
+device                        = localhost,12001
+user                          = user1
+password                      = user1
+caid                          = 0000
+group                         = 1

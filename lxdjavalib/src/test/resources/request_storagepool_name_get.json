@@ -1,0 +1,33 @@
+{
+    "name": "default",
+    "driver": "zfs",
+    "used_by": [
+      "/1.0/containers/alp1",
+      "/1.0/containers/alp10",
+      "/1.0/containers/alp11",
+      "/1.0/containers/alp12",
+      "/1.0/containers/alp13",
+      "/1.0/containers/alp14",
+      "/1.0/containers/alp15",
+      "/1.0/containers/alp16",
+      "/1.0/containers/alp17",
+      "/1.0/containers/alp18",
+      "/1.0/containers/alp19",
+      "/1.0/containers/alp2",
+      "/1.0/containers/alp20",
+      "/1.0/containers/alp3",
+      "/1.0/containers/alp4",
+      "/1.0/containers/alp5",
+      "/1.0/containers/alp6",
+      "/1.0/containers/alp7",
+      "/1.0/containers/alp8",
+      "/1.0/containers/alp9",
+      "/1.0/images/62e850a334bb9d99cac00b2e618e0291e5e7bb7db56c4246ecaf8e46fa0631a6"
+    ],
+    "config": {
+      "size": "61203283968",
+      "source": "/home/chb/mnt/l2/disks/default.img",
+      "volume.size": "0",
+      "zfs.pool_name": "default"
+    }
+}

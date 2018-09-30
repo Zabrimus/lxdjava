@@ -1,0 +1,9 @@
+{
+    "config": {},
+    "name": "lxdbr0",
+    "managed": false,
+    "type": "bridge",
+    "used_by": [
+        "/1.0/containers/blah"
+    ]
+}

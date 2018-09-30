@@ -1,0 +1,7 @@
+{
+  "config": {
+    "bridge.driver": "openvswitch",
+    "ipv4.address": "10.0.3.1/24",
+    "ipv6.address": "fd1:6997:4939:495d::1/64"
+  }
+}

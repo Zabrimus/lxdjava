@@ -1,0 +1,6 @@
+{
+    "action": "stop",
+    "timeout": 30,
+    "force": true,
+    "stateful": true
+}

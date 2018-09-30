@@ -1,0 +1,363 @@
+variables:
+    certfile:  ${certfile}
+    keyfile:   ${keyfile}
+    lxdhost:   ${lxdhost:localhost}
+    lxdport:   ${lxdport:8443}
+    cname:     ${container_name}
+    rootpw:    ${rootpw}
+    guacamole: ${guacamole}
+    minisatip: ${minisatip}
+    epgd:      ${epgd}
+    jonglisto: ${jonglisto}
+    vdruid:    ${vdruid}
+    vdrgid:    ${vdrgid}
+    video:     ${videomount}
+        
+lxd:
+    certFile: ${certfile}
+    keyFile: ${keyfile}
+    host: ${lxdhost}
+    port: ${lxdport}
+
+container:
+    source:
+        protocol: "simplestreams"
+        server : "https://images.linuxcontainers.org"
+        architecture: "x86_64"
+        alias: "debian/stretch"
+        type: "image"
+        
+    configuration:
+        name: ${cname}
+        ephemeral: "false"
+        profile: 
+            - "default"
+        storage: "default"
+        # Configrue this container as privileged container to be able to mount NFS shares        
+        config:
+            security.privileged: "true"
+            
+            
+provisioning:
+    # wait for network 
+    - script: 
+        label: "wait for network"
+        content: |
+            #!/bin/sh
+            while  ! systemctl is-active --quiet networking; do 
+                echo "wait for network being up..."
+                sleep 1
+            done
+            sleep 1
+
+    # install all packages
+    - run:
+        label: "install all packages" 
+        commands: |
+            apt-get install -qy build-essential git curl wget unzip rsyslog binutils \
+                                uuid uuid-dev libarchive13 libarchive-dev libfontconfig1 libfontconfig1-dev \
+                                libjpeg62-turbo-dev libjpeg62-turbo libcap-dev gettext libcurl3 libcurl4-openssl-dev \ 
+                                libssl-dev libssl1.1 libpugixml-dev libpugixml1v5 libmariadbclient-dev mariadb-client \      
+                                libjansson-dev libjansson4 python libpython2.7 python-dev zlib1g zlib1g-dev \
+                                libtinyxml2-4 libtinyxml2-dev libgraphicsmagick++3 libgraphicsmagick++1-dev \
+                                libmagick++-6.q16-7 libmagick++-6.q16-dev libcxxtools-dev libcxxtools9v5 \
+                                openssh-server nano less iputils-ping nfs-common
+                
+    # change default locale and timezone
+    - script:
+        label: "change locale and timezone"
+        content: |
+            #!/bin/sh
+            sed -i 's/^# *\(de_DE.UTF-8\)/\1/' /etc/locale.gen
+            locale-gen
+            update-locale LANG=de_DE.UTF-8
+            timedatectl set-timezone Europe/Berlin
+            echo "export LANG=de_DE@UTF-8" >> /etc/bash.bashrc
+            echo "export LANG=de_DE@UTF-8" > /etc/profile.d/locale_de.sh
+    
+    # mount video dir
+    - script:
+        label: "mount videodir"
+        content: |
+            #!/bin/sh
+            echo "${video}" >> /etc/fstab
+            mount /video
+    
+    # get VDR and all patches
+    - script:
+        label: "get vdr and all patches"
+        content: |
+            #!/bin/sh
+            mkdir -p /opt/vdr-config && \
+            cd /opt && \
+
+            # get VDR 2.4.0
+            curl -L "ftp://ftp.tvdr.de/vdr/vdr-2.4.0.tar.bz2" -o - | tar -xjf -
+
+            cd vdr-2.4.0 && \
+
+            sed -i '/define DEPRECATED_VIDEOSYSTEM/d' device.h
+            sed -i '/define DEPRECATED_VDR_CHARSET_OVERRIDE/d' vdr.c
+
+            # get all VDR patches            
+            curl -L "ftp://ftp.tvdr.de/vdr/Developer/Patches/vdr-2.4/vdr-2.4.0-01-fix-svdrp-modt-recflag.diff" -o - | patch -p1 
+            curl -L "ftp://ftp.tvdr.de/vdr/Developer/Patches/vdr-2.4/vdr-2.4.0-02-fix-invalid-locking-sequence.diff" -o - | patch -p1
+            curl -L "ftp://ftp.tvdr.de/vdr/Developer/Patches/vdr-2.4/vdr-2.4.0-03-fix-locking-channel-display.diff" -o - | patch -p1
+            curl -L "ftp://ftp.tvdr.de/vdr/Developer/Patches/vdr-2.4/vdr-2.4.0-04-fix-locking-channel-display-2.diff" -o - | patch -p1
+            curl -L "ftp://ftp.tvdr.de/vdr/Developer/Patches/vdr-2.4/vdr-2.4.0-05-fix-shutdown.diff" -o - | patch -p1
+            curl -L "ftp://ftp.tvdr.de/vdr/Developer/Patches/vdr-2.4/vdr-2.4.0-06-fix-channel-switch.diff" -o - | patch -p1
+            curl -L "ftp://ftp.tvdr.de/vdr/Developer/Patches/vdr-2.4/vdr-2.4.0-07-fix-disabling-mtd.diff" -o - | patch -p1
+
+            # get vdr plugin epg2vdr
+            cd /opt/vdr-2.4.0  
+            git clone git://projects.vdr-developer.org/vdr-plugin-epg2vdr.git PLUGINS/src/epg2vdr
+
+            # get vdr plugin satip
+            cd /opt/vdr-2.4.0  
+            git clone "https://github.com/rofafor/vdr-plugin-satip.git" PLUGINS/src/satip
+
+            # get vdr plugin suspendoutput
+            cd /opt/vdr-2.4.0  
+            curl -L "http://phivdr.dyndns.org/vdr/vdr-suspendoutput/vdr-suspendoutput-2.1.0.tgz" -o - | tar -C PLUGINS/src -xzf -
+            mv PLUGINS/src/suspendoutput-2.1.0 PLUGINS/src/suspendoutput
+
+            # get vdr plugin dummydevice
+            cd /opt/vdr-2.4.0  
+            curl -L "http://phivdr.dyndns.org/vdr/vdr-dummydevice/vdr-dummydevice-2.0.0.tgz" -o - | tar -C PLUGINS/src -xzf - 
+            mv PLUGINS/src/dummydevice-2.0.0 PLUGINS/src/dummydevice 
+
+            # get vdr plugin scraper2vdr
+            cd /opt/vdr-2.4.0
+            git clone "https://github.com/horchi/scraper2vdr.git" PLUGINS/src/scraper2vdr    
+            sed -i -e "s/IMAGELIB = imagemagick/IMAGELIB = graphicsmagick/"  PLUGINS/src/scraper2vdr/Makefile
+
+            # get vdr plugin jonglisto 
+            cd /opt/vdr-2.4.0
+            git clone https://github.com/Zabrimus/vdr-plugin-jonglisto.git PLUGINS/src/jonglisto
+
+            # get vdr plugin svdrposd
+            cd /opt/vdr-2.4.0
+            curl -L "http://vdr.schmirler.de/svdrposd/vdr-svdrposd-1.0.0.tgz" -o - | tar -C PLUGINS/src -xzf -
+            mv PLUGINS/src/svdrposd-1.0.0 PLUGINS/src/svdrposd
+
+            # get vdr plugin dvbapi
+            cd /opt/vdr-2.4.0
+            git clone "https://github.com/manio/vdr-plugin-dvbapi.git" PLUGINS/src/dvbapi
+
+            # delete some plugins
+            cd /opt/vdr-2.4.0/PLUGINS/src
+            rm -Rf dvbhddevice dvbsddevice epgtableid0 hello osddemo pictures rcu servicedemo skincurses status svdrpdemo
+
+    # create suspendout patch and apply it
+    - createFile:
+        remote: "/opt/vdr-2.4.0/PLUGINS/src/suspendoutput/timer.h.patch"
+        uid: "0"
+        gid: "0"
+        permission: "700"
+        content: |
+            --- timer.h.ORIG        2016-06-08 21:20:37.000000000 +0200
+            +++ timer.h     2018-09-29 15:09:48.925927029 +0200
+            @@ -238,25 +238,25 @@
+                                           TARG1 arg1,
+                                           unsigned int TimeoutMs)
+             {
+               return new cTimerFunctorR1<TCLASS,TRESULT,TARG1>(c,fp,arg1,TimeoutMs);
+             }
+             
+             template<class TCLASS>
+             cTimerEvent *CreateTimerEvent(TCLASS *c, void (TCLASS::*fp)(void),
+            -                              unsigned int TimeoutMs, bool runOnce = true)
+            +                              unsigned int TimeoutMs, bool runOnce)
+             {
+               return new cTimerFunctor0<TCLASS>(c,fp,TimeoutMs,runOnce);
+             }
+             
+             template<class TCLASS, class TARG1>
+             cTimerEvent *CreateTimerEvent(TCLASS *c, void (TCLASS::*fp)(TARG1),
+                                           TARG1 arg1,
+            -                              unsigned int TimeoutMs, bool runOnce = true)
+            +                              unsigned int TimeoutMs, bool runOnce)
+             {
+               return new cTimerFunctor1<TCLASS,TARG1>(c,fp,arg1,TimeoutMs,runOnce);
+             }
+             
+             template<class TCLASS>
+             void CancelTimerEvents(TCLASS *c)
+             {
+               cTimerEvent::CancelAll((void*)c);
+
+    - script:
+        label: "patch suspendoutput"
+        content: |
+            #!/bin/sh
+            cd /opt/vdr-2.4.0/PLUGINS/src/suspendoutput/
+            patch < timer.h.patch
+
+    # prepare VDR build
+    - script:
+        label: "build vdr"
+        content: |
+            #!/bin/sh
+            # Build vdr
+            cd /opt/vdr-2.4.0
+            cp Make.config.template Make.config
+            
+            echo "VIDEODIR     = /video" >> Make.config
+            echo "CACHEDIR     = /opt/vdr-config" >> Make.config
+            echo "CONFDIR      = /opt/vdr-config" >> Make.config
+            echo "ARGSDIR      = /opt/vdr-config/conf.d" >> Make.config
+            echo "RESDIR       = /opt/vdr-config" >> Make.config
+            
+            make LCLBLD=1 -j 4
+            make LCLBLD=1 install
+            mkdir -p /opt/vdr-cache/epgimages
+            mkdir -p /opt/vdr-cache/channellogos
+
+            # channel logos
+            cd /tmp
+            wget https://github.com/FrodoVDR/channellogos/archive/master.tar.gz
+            tar xzf master.tar.gz
+            cp -r channellogos-master/logos-orig/* /opt/vdr-cache/channellogos/
+
+    # prepare group and passwd
+    - script:
+        label: "change group and passwd and file owner"
+        content: |
+            #!/bin/sh
+            echo "vdr:x:${vdruid}:${vdrgid}:VDR user,,,:/opt/vdr-2.4.0:/bin/false" >> /etc/passwd
+            echo "vdr:x:${vdrgid}:" >> /etc/group                
+            chown -R vdr.vdr /opt/vdr-config
+            chown -R vdr.vdr /opt/vdr-2.4.0
+            chown -R vdr.vdr /opt/vdr-cache/epgimages
+            chown -R vdr.vdr /opt/vdr-cache/channellogos
+
+    # create systemd script
+    - createFile:
+        remote: "/etc/systemd/system/vdr.service"
+        uid: "0"
+        gid: "0"
+        permission: "644"
+        content: |
+            [Unit]
+            Description=Start vdr
+
+            [Service]
+            Type=simple
+            ExecStart=/opt/vdr-2.4.0/vdr
+            Restart=on-failure
+            RestartSec=10
+            TimeoutSec=30
+
+            [Install]
+            WantedBy=multi-user.target
+
+    # create default config (could be overwritten by the next task)
+    - createFile:
+        remote: "/opt/vdr-config/conf.d/vdr.conf"
+        uid: "105"
+        gid: "110"
+        permission: "644"
+        content: |
+            [vdr]
+            -w 0
+            -D 9
+            --user=vdr
+
+            [dummydevice]
+
+            [suspendoutput]
+            --timer=1
+            --blank
+
+            [dvbapi]
+
+            [epg2vdr]
+
+            [svdrposd]
+
+            [satip]
+            -d 8
+            -s ${minisatip}|DVBC-8|minisatip
+
+            [jonglisto]
+            -h ${jonglisto}
+            -p 6419
+
+    # copy all existing files (possibly from backup)
+    - uploadDir:
+        local: "vdr-config"
+        remote: "/opt/vdr-config"
+        uid: "105"
+        gid: "110"
+        permission: "644"
+
+    # set root password, enable root ssh 
+    - script: 
+        label: "enable root login"
+        content: |
+            if [ ! -z "${rootpw}" ]; then
+                echo "root:${rootpw}" | chpasswd
+                sed -i -e "s/#PermitRootLogin.*/PermitRootLogin yes/" /etc/ssh/sshd_config
+            fi;
+
+    # configure guacamole
+    - createFile:        
+        label: "create file in ${guacamole}"
+        container: ${guacamole}        
+        remote: "/tmp/addconnection"
+        uid: "0"
+        gid: "0"
+        permission: "0644"
+        content: |
+            \set AUTOCOMMIT off
+            DO $$BEGIN
+                IF NOT EXISTS (select 1 from guacamole_connection where connection_name = 'Container ${cname}') THEN        
+                    PERFORM nextval('guacamole_connection_connection_id_seq');        
+                    INSERT INTO guacamole_connection VALUES (currval('guacamole_connection_connection_id_seq'), '${cname}', NULL, 'ssh', NULL, NULL, NULL, false, NULL, NULL, NULL);
+                    INSERT INTO guacamole_connection_parameter VALUES (currval('guacamole_connection_connection_id_seq'), 'hostname', '${cname}');
+                    INSERT INTO guacamole_connection_parameter VALUES (currval('guacamole_connection_connection_id_seq'), 'password', '${rootpw}');
+                    INSERT INTO guacamole_connection_parameter VALUES (currval('guacamole_connection_connection_id_seq'), 'username', 'root');
+    
+                    INSERT INTO guacamole_connection_permission VALUES ((SELECT user_id FROM guacamole_user WHERE username = 'guacadmin'), currval('guacamole_connection_connection_id_seq'), 'READ');
+                    INSERT INTO guacamole_connection_permission VALUES ((SELECT user_id FROM guacamole_user WHERE username = 'guacadmin'), currval('guacamole_connection_connection_id_seq'), 'UPDATE');
+                    INSERT INTO guacamole_connection_permission VALUES ((SELECT user_id FROM guacamole_user WHERE username = 'guacadmin'), currval('guacamole_connection_connection_id_seq'), 'DELETE');
+                    INSERT INTO guacamole_connection_permission VALUES ((SELECT user_id FROM guacamole_user WHERE username = 'guacadmin'), currval('guacamole_connection_connection_id_seq'), 'ADMINISTER');
+                END IF;
+            END$$;
+            commit;
+    
+    - script:
+        label: "in ${guacamole}"
+        container: ${guacamole}
+        content: |
+            #!/bin/sh
+            if [ -z "${rootpw}" -o -z "${guacamole}" ]; then 
+                exit 0; 
+            fi
+            
+            su postgres -c "psql -d guacamole_db -f /tmp/addconnection"
+            rm -f /tmp/addconnection
+
+    # fix LXD stop issues
+    - run:
+        label: "fix lxd stop issue" 
+        commands: |
+            systemctl mask systemd-networkd            
+
+    # restart all services
+    - run: 
+        label: "restart all services"
+        commands: |
+            systemctl daemon-reload            
+            systemctl stop sshd
+            systemctl start sshd
+            systemctl enable vdr
+            systemctl start vdr
+
+    # cleanup
+    - run: 
+        label: "cleanup"
+        commands: |
+            apt-get clean
+            apt-get -qy autoremove
+            rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*

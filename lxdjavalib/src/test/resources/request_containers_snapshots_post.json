@@ -1,0 +1,4 @@
+{
+    "name": "my-snapshot",          # Name of the snapshot
+    "stateful": true                # Whether to include state too
+}

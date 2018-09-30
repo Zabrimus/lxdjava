@@ -1,0 +1,7 @@
+{
+    "name": "lxd1",
+    "url": "https://10.1.1.101:8443",
+    "database": true,
+    "state": "Online"
+}
+

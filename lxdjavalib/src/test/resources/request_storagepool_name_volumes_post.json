@@ -1,0 +1,8 @@
+{
+  "config": {
+
+  },
+  "pool": "pool1",
+  "name": "vol1",
+  "type": "custom"
+}

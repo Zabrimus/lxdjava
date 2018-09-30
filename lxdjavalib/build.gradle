@@ -1,0 +1,76 @@
+plugins {
+     id 'java'
+     id 'findbugs'
+     id 'pmd'
+     id 'jacoco'
+     id 'eclipse'
+     id 'maven'
+}
+
+sourceCompatibility = "1.8"
+targetCompatibility = "1.8"
+
+repositories {
+    jcenter()
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'com.squareup.retrofit2:retrofit:2.4.0'
+    implementation 'com.google.code.gson:gson:2.8.2'
+    implementation 'com.squareup.retrofit2:converter-gson:2.4.0'
+    implementation 'com.squareup.retrofit2:adapter-java8:2.4.0'
+    implementation 'com.squareup.okhttp3:logging-interceptor:3.11.0'
+    implementation 'ch.qos.logback:logback-classic:1.2.3'
+
+
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.2.0'
+    testImplementation 'org.junit.jupiter:junit-jupiter-engine:5.2.0'
+    testImplementation 'org.junit.platform:junit-platform-launcher:1.2.0'
+    testImplementation 'org.junit.platform:junit-platform-suite-api:1.2.0'
+    testImplementation 'org.junit.platform:junit-platform-runner:1.2.0'
+    testImplementation 'com.squareup.retrofit2:retrofit-mock:2.4.0'
+
+    compileOnly 'org.projectlombok:lombok:1.18.2'
+}
+
+tasks.withType(FindBugs) {
+    reports {
+        xml.enabled false
+        html.enabled true
+        html.stylesheet resources.text.fromFile('config/xsl/color.xsl')
+    }
+}
+
+findbugs {
+    sourceSets = [sourceSets.main]
+    ignoreFailures = true
+    effort = "max"
+    showProgress = true
+    reportLevel = "high"
+}
+
+jacocoTestReport {
+    reports {
+        xml.enabled false
+        csv.enabled false
+        html.destination file("${buildDir}/jacocoHtml")
+    }
+}
+
+task writeNewPom {
+    doLast {
+        pom {
+            project {
+                inceptionYear '2018'
+                licenses {
+                    license {
+                        name 'The Apache Software License, Version 2.0'
+                        url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                        distribution 'repo'
+                    }
+                }
+            }
+        }.writeTo("$buildDir/newpom.xml")
+    }
+}

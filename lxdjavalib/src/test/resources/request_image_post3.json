@@ -1,0 +1,15 @@
+{
+    "filename": "filename",
+    "public":   true,
+    "properties": {
+        "os": "Ubuntu"
+    },
+    "aliases": [
+        {"name": "my-alias",
+         "description": "A description"}
+    ],
+    "source": {
+        "type": "url",
+        "url": "https://www.some-server.com/image"
+    }
+}

@@ -1,0 +1,203 @@
+variables:
+    certfile:  ${certfile}
+    keyfile:   ${keyfile}
+    lxdhost:   ${lxdhost:localhost}
+    lxdport:   ${lxdport:8443}
+    cname:     ${container_name}
+    rootpw:    ${rootpw}
+    guacamole: ${guacamole}
+        
+lxd:
+    certFile: ${certfile}
+    keyFile: ${keyfile}
+    host: ${lxdhost}
+    port: ${lxdport}
+
+container:
+    source:
+        protocol: "simplestreams"
+        server : "https://images.linuxcontainers.org"
+        architecture: "x86_64"
+        alias: "debian/stretch"
+        type: "image"
+        
+    configuration:
+        name: ${cname}
+        ephemeral: "false"
+        profile: 
+            - "default"
+        storage: "default"
+            
+provisioning:
+    # wait for network 
+    - script: 
+        label: "wait for network"
+        content: |
+            #!/bin/sh
+            while  ! systemctl is-active --quiet networking; do 
+                echo "wait for network being up..."
+                sleep 1
+            done
+            sleep 1
+
+    # install all packages
+    - run:
+        label: "install all packages" 
+        commands: |
+            apt-get install -qy openjdk-8-jdk openssh-server git curl unzip \
+                                nano less syslog-ng iputils-ping                                
+                
+    # change default locale and timezone
+    - script:
+        label: "change locale and timezone"
+        content: |
+            #!/bin/sh
+            sed -i 's/^# *\(de_DE.UTF-8\)/\1/' /etc/locale.gen
+            locale-gen
+            update-locale LANG=de_DE.UTF-8
+            timedatectl set-timezone Europe/Berlin
+            echo "export LANG=de_DE@UTF-8" >> /etc/bash.bashrc
+            echo "export LANG=de_DE@UTF-8" > /etc/profile.d/locale_de.sh
+            
+    # install apache tomee
+    - run: 
+        label: "install apache tomee"
+        commands: |
+            cd /usr/local
+            curl -fSL http://mirror.dkd.de/apache/tomee/tomee-7.1.0/apache-tomee-7.1.0-webprofile.tar.gz -o - | tar -xz
+            rm -Rf /usr/local/apache-tomee-webprofile-7.1.0/webapps/ROOT
+
+    # get and build jonglisto-ng
+    - script:
+        label: "get and build jonglisto-ng"
+        content: |
+            #!/bin/sh
+            cd /usr/local/src
+            git clone https://github.com/Zabrimus/jonglisto-ng.git jonglisto-ng
+            cd jonglisto-ng
+            ./gradlew build
+            cp build/libs/jonglisto-ng-*.war /usr/local/apache-tomee-webprofile-7.1.0/webapps/ROOT.war
+            mkdir /etc/jonglisto
+            mkdir /var/jonglisto-ng
+            cp samples/*.ini /etc/jonglisto
+            cp samples/*.xml /etc/jonglisto
+
+    # copy all existing files (possibly from backup)
+    - uploadDir:
+        local: "jonglisto-ng/etc"
+        remote: "/etc/jonglisto"
+        uid: "0"
+        gid: "0"
+        permission: "644"
+
+    # copy all existing files (possibly from backup)
+    - uploadDir:
+        local: "jonglisto-ng/var"
+        remote: "/var/jonglisto-ng"
+        uid: "0"
+        gid: "0"
+        permission: "644"
+
+    # create tomee start script
+    - createFile:        
+        label: "create tomee start script"
+        remote: "/usr/local/bin/start_tomee.sh"
+        uid: "0"
+        gid: "0"
+        permission: "0744"
+        content: |
+            #!/bin/sh
+            export TZ='Europe/Berlin'
+            cd /usr/local/apache-tomee-webprofile-7.1.0/bin
+            ./catalina.sh run
+
+    # create systemd script
+    - createFile:
+        remote: "/etc/systemd/system/jonglisto-ng.service"
+        uid: "0"
+        gid: "0"
+        permission: "644"
+        content: |
+            [Unit]
+            Description=Start jonglisto-ng
+
+            [Service]
+            Type=simple
+            ExecStart=/usr/local/bin/start_tomee.sh
+            Restart=on-failure
+            RestartSec=10
+            TimeoutSec=30
+
+            [Install]
+            WantedBy=multi-user.target
+
+
+    # set root password, enable root ssh 
+    - script: 
+        label: "enable root login"
+        content: |
+            if [ ! -z "${rootpw}" ]; then
+                echo "root:${rootpw}" | chpasswd
+                sed -i -e "s/#PermitRootLogin.*/PermitRootLogin yes/" /etc/ssh/sshd_config
+            fi;
+
+    # configure guacamole
+    - createFile:        
+        label: "create file in ${guacamole}"
+        container: ${guacamole}        
+        remote: "/tmp/addconnection"
+        uid: "0"
+        gid: "0"
+        permission: "0644"
+        content: |
+            \set AUTOCOMMIT off
+            DO $$BEGIN
+                IF NOT EXISTS (select 1 from guacamole_connection where connection_name = 'Container ${cname}') THEN        
+                    PERFORM nextval('guacamole_connection_connection_id_seq');        
+                    INSERT INTO guacamole_connection VALUES (currval('guacamole_connection_connection_id_seq'), '${cname}', NULL, 'ssh', NULL, NULL, NULL, false, NULL, NULL, NULL);
+                    INSERT INTO guacamole_connection_parameter VALUES (currval('guacamole_connection_connection_id_seq'), 'hostname', '${cname}');
+                    INSERT INTO guacamole_connection_parameter VALUES (currval('guacamole_connection_connection_id_seq'), 'password', '${rootpw}');
+                    INSERT INTO guacamole_connection_parameter VALUES (currval('guacamole_connection_connection_id_seq'), 'username', 'root');
+    
+                    INSERT INTO guacamole_connection_permission VALUES ((SELECT user_id FROM guacamole_user WHERE username = 'guacadmin'), currval('guacamole_connection_connection_id_seq'), 'READ');
+                    INSERT INTO guacamole_connection_permission VALUES ((SELECT user_id FROM guacamole_user WHERE username = 'guacadmin'), currval('guacamole_connection_connection_id_seq'), 'UPDATE');
+                    INSERT INTO guacamole_connection_permission VALUES ((SELECT user_id FROM guacamole_user WHERE username = 'guacadmin'), currval('guacamole_connection_connection_id_seq'), 'DELETE');
+                    INSERT INTO guacamole_connection_permission VALUES ((SELECT user_id FROM guacamole_user WHERE username = 'guacadmin'), currval('guacamole_connection_connection_id_seq'), 'ADMINISTER');
+                END IF;
+            END$$;
+            commit;
+    
+    - script:
+        label: "in ${guacamole}"
+        container: ${guacamole}
+        content: |
+            #!/bin/sh
+            if [ -z "${rootpw}" -o -z "${guacamole}" ]; then 
+                exit 0; 
+            fi
+            
+            su postgres -c "psql -d guacamole_db -f /tmp/addconnection"
+            rm -f /tmp/addconnection
+
+    # fix LXD stop issues
+    - run:
+        label: "fix lxd stop issue" 
+        commands: |
+            systemctl mask systemd-networkd            
+
+    # cleanup
+    - run: 
+        label: "cleanup"
+        commands: |
+            apt-get clean
+            apt-get -qy autoremove
+            rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+    # restart all services
+    - run: 
+        label: "restart all services"
+        ignore-error: "true"
+        commands: |
+            systemctl daemon-reload
+            systemctl enable jonglisto-ng
+            systemctl start jonglisto-ng

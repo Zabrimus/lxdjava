@@ -1,0 +1,6 @@
+{
+    "config": {
+        "core.trust_password": "my-new-password",
+        "core.https_address": "1.2.3.4:8443"
+    }
+}

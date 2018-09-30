@@ -1,0 +1,16 @@
+{
+  "name": "test",
+  "description": "Some description string",
+  "config": {
+    "limits.memory": "2GB"
+  },
+  "devices": {
+    "kvm": {
+      "path": "/dev/kvm",
+      "type": "unix-char"
+    }
+  },
+  "used_by": [
+    "/1.0/containers/blah"
+  ]
+}

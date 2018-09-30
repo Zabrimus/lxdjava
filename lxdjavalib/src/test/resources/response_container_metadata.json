@@ -1,0 +1,23 @@
+{
+  "architecture": "x86_64",
+  "creation_date": 1477146654,
+  "expiry_date": 0,
+  "properties": {
+    "architecture": "x86_64",
+    "description": "Busybox x86_64",
+    "name": "busybox-x86_64",
+    "os": "Busybox"
+  },
+  "templates": {
+    "/template": {
+      "when": [
+        ""
+      ],
+      "create_only": false,
+      "template": "template.tpl",
+      "properties": {
+
+      }
+    }
+  }
+}

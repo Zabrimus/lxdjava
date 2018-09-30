@@ -1,0 +1,30 @@
+{
+  "name": "my-new-container",
+  "architecture": "x86_64",
+  "profiles": [
+    "default"
+  ],
+  "ephemeral": true,
+  "config": {
+    "limits.cpu": "2"
+  },
+  "devices": {
+    "kvm": {
+      "path": "/dev/kvm",
+      "type": "unix-char"
+    }
+  },
+  "source": {
+    "type": "migration",
+    "mode": "pull",
+    "operation": "https://10.0.2.3:8443/1.0/operations/<UUID>",
+    "certificate": "PEM certificate",
+    "base-image": "<fingerprint>",
+    "container_only": true,
+    "secrets": {
+      "control": "my-secret-string",
+      "criu": "my-other-secret",
+      "fs": "my third secret"
+    }
+  }
+}
