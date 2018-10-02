@@ -112,7 +112,8 @@ provisioning:
     # install guacamole application
     - run: 
         commands: |
-            curl -L "http://apache.org/dyn/closer.cgi?action=download&filename=guacamole/0.9.14/binary/guacamole-0.9.14.war" -o /var/lib/tomcat8/webapps/guacamole.war
+            rm -Rf /var/lib/tomcat8/webapps/ROOT 
+            curl -L "http://apache.org/dyn/closer.cgi?action=download&filename=guacamole/0.9.14/binary/guacamole-0.9.14.war" -o /var/lib/tomcat8/webapps/ROOT.war
         
     # set root password, enable root ssh, change postgresql subnet
     - script: 
