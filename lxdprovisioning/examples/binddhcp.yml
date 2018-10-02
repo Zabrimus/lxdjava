@@ -60,7 +60,9 @@ provisioning:
             update-locale LANG=de_DE.UTF-8
             timedatectl set-timezone Europe/Berlin
             echo "export LANG=de_DE@UTF-8" >> /etc/bash.bashrc
+            echo "export LC_ALL=de_DE.UTF-8" >> /etc/bash.bashrc
             echo "export LANG=de_DE@UTF-8" > /etc/profile.d/locale_de.sh
+            echo "export LC_ALL=de_DE.UTF-8" > /etc/profile.d/locale_de.sh
             
     # stop services
     - run: 
