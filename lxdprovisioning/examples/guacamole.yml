@@ -44,8 +44,9 @@ provisioning:
     - run: 
         commands: |
             apt-get update
-            apt-get dist-upgrade 
-            apt-get -y install postgresql openssh-server tomcat8 curl libcairo2-dev libossp-uuid-dev \
+            apt-get -y install eatmydata             
+            eatmydata -- apt-get dist-upgrade 
+            eatmydata -- apt-get -y install postgresql openssh-server tomcat8 curl libcairo2-dev libossp-uuid-dev \
                                libavcodec-dev libavutil-dev libswscale-dev libfreerdp-dev libpango1.0-dev \ 
                                libssh2-1-dev libtelnet-dev libvncserver-dev libpulse-dev libssl-dev \ 
                                libvorbis-dev libwebp-dev libjpeg62-turbo-dev libpng-dev libpng16-16 \
