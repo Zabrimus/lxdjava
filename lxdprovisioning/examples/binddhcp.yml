@@ -203,7 +203,7 @@ provisioning:
 
     # copy all existing files (possibly from backup)
     - uploadDir:
-        local: "binddhcp-config/hdcp"
+        local: "binddhcp-config/dhcp"
         remote: "/etc/dhcp"
         uid: "0"
         gid: "0"
