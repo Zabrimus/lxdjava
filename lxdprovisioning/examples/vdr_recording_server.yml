@@ -54,7 +54,10 @@ provisioning:
     - run:
         label: "install all packages" 
         commands: |
-            apt-get install -qy build-essential git curl wget unzip rsyslog binutils \
+            apt-get update
+            apt-get -y install eatmydata             
+            eatmydata -- apt-get dist-upgrade 
+            eatmydata -- apt-get install -qy build-essential git curl wget unzip rsyslog binutils \
                                 uuid uuid-dev libarchive13 libarchive-dev libfontconfig1 libfontconfig1-dev \
                                 libjpeg62-turbo-dev libjpeg62-turbo libcap-dev gettext libcurl3 libcurl4-openssl-dev \ 
                                 libssl-dev libssl1.1 libpugixml-dev libpugixml1v5 libmariadbclient-dev mariadb-client \      

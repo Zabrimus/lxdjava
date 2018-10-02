@@ -44,7 +44,10 @@ provisioning:
     - run:
         label: "install all packages" 
         commands: |
-            apt-get install -qy openjdk-8-jdk openssh-server git curl unzip \
+            apt-get update
+            apt-get -y install eatmydata             
+            eatmydata -- apt-get dist-upgrade 
+            eatmydata -- apt-get install -qy openjdk-8-jdk openssh-server git curl unzip \
                                 nano less syslog-ng iputils-ping                                
                 
     # change default locale and timezone
