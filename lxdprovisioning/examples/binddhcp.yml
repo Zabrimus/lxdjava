@@ -209,6 +209,13 @@ provisioning:
         gid: "0"
         permission: "644"
 
+    # change permission 
+    - script: 
+        label: "change permission"
+        content: |
+            chown -R bind.bind /etc/bind/lan
+            chown bind.bind /etc/bind/named.conf
+
     # set root password, enable root ssh 
     - script: 
         label: "enable root login"
