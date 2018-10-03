@@ -27,6 +27,8 @@ container:
         profile: 
             - "default"
         storage: "default"
+        config:
+            security.privileged: "true"
             
 provisioning:
     # wait for network 
