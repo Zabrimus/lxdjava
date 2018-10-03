@@ -276,5 +276,8 @@ provisioning:
         label: "restart all services"
         ignore-error: "true"
         commands: |
+            systemctl daemon-reload
+            systemctl enable isc-dhcp-server
+            systemctl enable bind9
             systemctl start isc-dhcp-server
             systemctl start bind9
