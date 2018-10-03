@@ -6,8 +6,6 @@ variables:
     cname:     ${container_name}
     rootpw:    ${rootpw}
     guacamole: ${guacamole}
-    productid: ${productid}
-    vendorid:  ${vendorid}
         
 lxd:
     certFile: ${certfile}
@@ -32,10 +30,8 @@ container:
         
     devices:
         reader:
-            vendorid:  "${vendorid}"
-            productid: "${productid}"
-            type: "usb"
-            required: "false"
+            path: "/dev/ttyUSB0" 
+            type: "unix-char"
             
 provisioning:
     # wait for network 
