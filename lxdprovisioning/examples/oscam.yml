@@ -111,7 +111,7 @@ provisioning:
 
             [Service]
             Type=simple
-            ExecStart=/usr/bin/oscam -c /etc/oscam/$i -u -t /tmp/.oscam-$1
+            ExecStart=/usr/bin/oscam -c /etc/oscam/$i -u -t /tmp/.oscam-$i
             Restart=on-failure
             RestartSec=10
             TimeoutSec=30
