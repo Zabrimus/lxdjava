@@ -246,6 +246,7 @@ provisioning:
         permission: "744"
         content: |
             #!/bin/sh
+            mount /video
             sudo -u vdr /opt/vdr-2.4.0/vdr
 
     # create systemd script
