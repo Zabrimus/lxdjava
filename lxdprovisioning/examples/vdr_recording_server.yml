@@ -237,6 +237,8 @@ provisioning:
             chown -R vdr.vdr /opt/vdr-2.4.0
             chown -R vdr.vdr /opt/vdr-cache/epgimages
             chown -R vdr.vdr /opt/vdr-cache/channellogos
+            mkdir /var/cache/vdr
+            chown -R vdr.vdr /var/cache/vdr
 
     # create start script
     - createFile:
