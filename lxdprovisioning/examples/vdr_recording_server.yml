@@ -85,6 +85,8 @@ provisioning:
         label: "mount videodir"
         content: |
             #!/bin/sh
+            mkdir /video
+            chown vdr.vdr /video
             echo "${video}" >> /etc/fstab
             mount /video
     
