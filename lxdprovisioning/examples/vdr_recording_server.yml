@@ -64,7 +64,7 @@ provisioning:
                                 libjansson-dev libjansson4 python libpython2.7 python-dev zlib1g zlib1g-dev \
                                 libtinyxml2-4 libtinyxml2-dev libgraphicsmagick++3 libgraphicsmagick++1-dev \
                                 libmagick++-6.q16-7 libmagick++-6.q16-dev libcxxtools-dev libcxxtools9v5 \
-                                openssh-server nano less iputils-ping nfs-common
+                                sudo openssh-server nano less iputils-ping nfs-common
                 
     # change default locale and timezone
     - script:
@@ -238,6 +238,16 @@ provisioning:
             chown -R vdr.vdr /opt/vdr-cache/epgimages
             chown -R vdr.vdr /opt/vdr-cache/channellogos
 
+    # create start script
+    - createFile:
+        remote: "/usr/local/bin/start_vdr.sh"
+        uid: "0"
+        gid: "0"
+        permission: "744"
+        content: |
+            #!/bin/sh
+            sudo -u vdr /opt/vdr-2.4.0/vdr
+
     # create systemd script
     - createFile:
         remote: "/etc/systemd/system/vdr.service"
@@ -250,7 +260,7 @@ provisioning:
 
             [Service]
             Type=simple
-            ExecStart=/opt/vdr-2.4.0/vdr
+            ExecStart=/usr/local/bin/start_vdr.sh
             Restart=on-failure
             RestartSec=10
             TimeoutSec=30
