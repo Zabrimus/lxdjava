@@ -57,14 +57,14 @@ provisioning:
             apt-get update
             apt-get -y install eatmydata             
             eatmydata -- apt-get dist-upgrade 
-            eatmydata -- apt-get install -qy build-essential git curl wget unzip rsyslog binutils \
+            eatmydata -- apt-get install -qy build-essential git curl wget unzip binutils \
                                 uuid uuid-dev libarchive13 libarchive-dev libfontconfig1 libfontconfig1-dev \
                                 libjpeg62-turbo-dev libjpeg62-turbo libcap-dev gettext libcurl3 libcurl4-openssl-dev \ 
                                 libssl-dev libssl1.1 libpugixml-dev libpugixml1v5 libmariadbclient-dev mariadb-client \      
                                 libjansson-dev libjansson4 python libpython2.7 python-dev zlib1g zlib1g-dev \
                                 libtinyxml2-4 libtinyxml2-dev libgraphicsmagick++3 libgraphicsmagick++1-dev \
                                 libmagick++-6.q16-7 libmagick++-6.q16-dev libcxxtools-dev libcxxtools9v5 \
-                                sudo openssh-server nano less iputils-ping nfs-common
+                                sudo openssh-server nano less iputils-ping nfs-common syslog-ng
                 
     # change default locale and timezone
     - script:
