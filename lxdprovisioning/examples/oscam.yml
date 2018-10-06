@@ -176,6 +176,13 @@ provisioning:
             su postgres -c "psql -d guacamole_db -f /tmp/addconnection"
             rm -f /tmp/addconnection
 
+    # change syslog, fixes 'no space left on device tty10'. Really strange.... 
+    - script: 
+        label: "change syslog"
+        content: |
+            #!/bin/sh        
+            sed -i "s/\`tty10\`/\"\/var\/log\/cons-tty10.log\"/" /etc/syslog-ng/syslog-ng.conf
+
     # fix LXD stop issues
     - run:
         label: "fix lxd stop issue" 
@@ -188,6 +195,9 @@ provisioning:
         commands: |
             systemctl stop sshd
             systemctl start sshd
+            systemctl enable syslog-ng
+            systemctl stop syslog-ng
+            systemctl start syslog-ng
 
     # cleanup
     - run: 

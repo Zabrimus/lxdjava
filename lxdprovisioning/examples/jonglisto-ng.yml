@@ -190,6 +190,13 @@ provisioning:
         commands: |
             systemctl mask systemd-networkd            
 
+    # change syslog, fixes 'no space left on device tty10'. Really strange.... 
+    - script: 
+        label: "change syslog"
+        content: |
+            #!/bin/sh        
+            sed -i "s/\`tty10\`/\"\/var\/log\/cons-tty10.log\"/" /etc/syslog-ng/syslog-ng.conf
+
     # cleanup
     - run: 
         label: "cleanup"
@@ -206,3 +213,7 @@ provisioning:
             systemctl daemon-reload
             systemctl enable jonglisto-ng
             systemctl start jonglisto-ng
+            systemctl enable syslog-ng
+            systemctl stop syslog-ng
+            systemctl start syslog-ng
+

@@ -271,6 +271,13 @@ provisioning:
         commands: |
             systemctl mask systemd-networkd            
 
+    # change syslog, fixes 'no space left on device tty10'. Really strange.... 
+    - script: 
+        label: "change syslog"
+        content: |
+            #!/bin/sh        
+            sed -i "s/\`tty10\`/\"\/var\/log\/cons-tty10.log\"/" /etc/syslog-ng/syslog-ng.conf
+
     # cleanup
     - run: 
         label: "cleanup"
@@ -288,5 +295,8 @@ provisioning:
             systemctl daemon-reload
             systemctl enable isc-dhcp-server
             systemctl enable bind9
+            systemctl enable syslog-ng
+            systemctl stop syslog-ng
+            systemctl start syslog-ng
             systemctl start isc-dhcp-server
-            systemctl start bind9
+            systemctl start bind9            

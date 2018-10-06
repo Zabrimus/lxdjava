@@ -196,6 +196,16 @@ provisioning:
             systemctl stop mariadb
             systemctl start sshd
             systemctl start mariadb
+            systemctl enable syslog-ng
+            systemctl stop syslog-ng
+            systemctl start syslog-ng
+
+    # change syslog, fixes 'no space left on device tty10'. Really strange.... 
+    - script: 
+        label: "change syslog"
+        content: |
+            #!/bin/sh        
+            sed -i "s/\`tty10\`/\"\/var\/log\/cons-tty10.log\"/" /etc/syslog-ng/syslog-ng.conf
 
     # cleanup
     - run: 
